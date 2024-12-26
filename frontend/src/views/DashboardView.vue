@@ -4,7 +4,11 @@
     <div class="rooms-menu">
       <div
         class="room-item"
-        style="font-weight: 600; background-color: yellowgreen"
+        style="
+          font-weight: 600;
+          background-color: rgba(236, 72, 153, 1);
+          color: white;
+        "
       >
         전체
       </div>
@@ -14,35 +18,57 @@
 
     <!-- 전력량 -->
     <div class="power-viewer">
+      <div class="switch-container">
+        <ToggleSwitch v-model="isPowerOn" />
+      </div>
       <div class="power-history-container">
-        <PowerHistoryChart />
+        <PowerHistoryChart :power-data="powerData" />
       </div>
       <div class="power-sum-container">
-        <span>{{ `${powerSum} kWh` }}</span>
+        <span>{{ `${powerSum} kWh | ${powerSum * 5}원` }}</span>
       </div>
     </div>
 
     <!-- 알림 -->
     <div class="notification-viewer">
-      <div class="notification-item">알림 1</div>
-      <div class="notification-item">알림 2</div>
-      <div class="notification-item">알림 3</div>
+      <div class="notification-card">알림 1</div>
+      <div class="notification-card">알림 2</div>
+      <div class="notification-card">알림 3</div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
-import { helloWorld } from "@/api.js";
+import { ref, computed } from "vue";
+import { helloWorld, getPowerData } from "@/api.js";
 
+import ToggleSwitch from "@/components/ToggleSwitch.vue";
 import PowerHistoryChart from "@/layouts/PowerHistoryChart.vue";
 
-const powerSum = ref(0);
+const powerData = ref([]);
+const powerDataNextReqIndex = ref(0);
+const powerSum = computed(() => {
+  return parseInt(powerData.value.reduce((acc, cur) => acc + cur.value, 0));
+});
+const isPowerOn = ref(true);
+
+let intervalId = null;
 
 async function init() {
-  await helloWorld();
-}
+  const { data, nextIndex } = await getPowerData();
+  powerData.value = data;
+  powerDataNextReqIndex.value = nextIndex;
 
+  intervalId = setInterval(async () => {
+    if (isPowerOn.value) {
+      const { data, nextIndex } = await getPowerData(
+        powerDataNextReqIndex.value
+      );
+      powerData.value = [...powerData.value, ...data];
+      powerDataNextReqIndex.value = nextIndex;
+    }
+  }, 5000);
+}
 init();
 </script>
 
@@ -114,6 +140,7 @@ init();
     background-color: white;
     border: 1px solid gray;
     border-top: none;
+    font-size: 1.5rem;
   }
 }
 
@@ -123,5 +150,18 @@ init();
   padding: 2rem;
   border-radius: 1rem;
   background-color: white;
+
+  .notification-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 100px;
+    width: 100%;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 1rem;
+    background-color: white;
+    border: 1px solid rgb(210, 210, 210);
+  }
 }
 </style>
